@@ -397,6 +397,7 @@ DBPrintCmd::exec(const string& option)
 			DBTable::printData(cout, INT_MAX, true);
 		else
 			DBTable::printData(cout, dbtbl[r][c], true);
+		cout << endl;
 	} else if (doCase == 1){
 		int r;
 		if (!checkRowIdx(options.at(1), r)) return CMD_EXEC_ERROR;
@@ -408,10 +409,12 @@ DBPrintCmd::exec(const string& option)
 			if(i < dbtbl[r].size()-1)
 				cout << " ";
 		}
+		cout << endl;
 	} else if (doCase == 2){
 		int c;
 		if (!checkColIdx(options.at(1), c)) return CMD_EXEC_ERROR;
 		dbtbl.printCol(c);
+		cout << endl;
 	} else if (doCase == 3){
 		cout << dbtbl;
 	} else if (doCase == 4){

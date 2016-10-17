@@ -136,6 +136,7 @@ void
 DBTable::reset()
 {
    // TODO
+   _table.clear();
 }
 
 //void addRow(const DBRow& r)
