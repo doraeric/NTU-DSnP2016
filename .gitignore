@@ -1,0 +1,19 @@
+/*
+!/hw*/
+!/README.md
+!/.gitignore
+
+# Vim
+*.swp
+
+# Documents
+*.tgz
+*.docx
+*.doc
+*.pdf
+
+# Compiled object files
+*.o
+
+# Ctags
+tags

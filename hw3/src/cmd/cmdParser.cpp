@@ -44,6 +44,7 @@ CmdParser::closeDofile()
 	if(_dofile == 0) return;
 	assert(_dofile != 0);
 	// TODO...
+	_dofile->close();
 	delete _dofile;
 	_dofile = NULL;
 }
@@ -114,6 +115,9 @@ void
 CmdParser::printHelps() const
 {
    // TODO...
+	for(CmdMap::const_iterator it = _cmdMap.begin(); it != _cmdMap.end(); it++){
+		it->second->help();
+	}
 }
 
 void
@@ -154,11 +158,64 @@ CmdParser::parseCmd(string& option)
    assert(!_history.empty());
    string str = _history.back();
 
-   // TODO...
-   assert(str[0] != 0 && str[0] != ' ');
-   return NULL;
+	// TODO... Exception
+	assert(str[0] != 0 && str[0] != ' ');
+	CmdExec* cmd_exe = NULL;
+	string cmd_str;
+	size_t del_pos = str.find_first_of(" "); // delimiter position
+	if(del_pos == string::npos){
+		option = "";
+		cmd_str = str;
+	} else {
+		cmd_str = str.substr(0, del_pos);
+	}
+	size_t opt_pos = str.find_first_not_of(" ", del_pos);
+	if(opt_pos == string::npos){
+		option = "";
+	} else {
+		option = str.substr(opt_pos);
+	}
+	cmd_exe = getCmd(cmd_str);
+	if(cmd_exe == 0){
+		cerr << "Illegal command!! (" << cmd_str << ")\n";
+		return NULL;
+	}
+	return cmd_exe;
+	return NULL;
 }
 
+size_t myStrGetTok2(const string& str,
+ string& tok, size_t pos = 0, const char del = ' ');
+bool getCmdList(const string& cmd, vector<string>& cmds,
+ const vector<string>& check_list){
+	for(size_t li = 0; li < check_list.size(); ++li){
+		// every loop
+		string stdcmd = check_list.at(li);
+		if(cmd.size() > stdcmd.size()) continue;
+//		bool multi_cmd = false;
+//		if(cmd.size() < stdcmd.find_last_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ")+1)
+//			multi_cmd = true;
+		bool check_to_end = false;
+		bool is_cmd = true;
+		for (unsigned i = 0; i < stdcmd.size(); ++i) {
+			if (i == cmd.size()){
+				break;
+			}
+			char ch1 = tolower(cmd[i]);
+			char ch2 = tolower(stdcmd[i]);
+			if(ch1 != ch2){
+				is_cmd = false;
+				break;
+			}
+			if(i == stdcmd.size() - 1){
+				check_to_end = true;
+			}
+		}
+		if(is_cmd) cmds.push_back(stdcmd);
+		if(check_to_end) return true;
+	}
+	return false; // true if completely the same
+}
 // This function is called by pressing 'Tab'.
 // It is to list the partially matched commands.
 // "str" is the partial string before current cursor position. It can be 
@@ -219,12 +276,80 @@ CmdParser::parseCmd(string& option)
 //    [After Tab]
 //    ==> Beep and stay in the same location
 //
+
 void
 CmdParser::listCmd(const string& str)
 {
-   // TODO...
+	// TODO...
+	// Case 1: list all
+	string cmd;
+	size_t cmd_end_pos = myStrGetTok2(str, cmd);
+	size_t cur_pos = _readBufPtr - _readBuf;
+
+	if(cmd_end_pos == string::npos){
+		int count = 0;
+		for(CmdMap::iterator it = _cmdMap.begin(); it != _cmdMap.end(); ++it, ++count){
+			string cmd = it->first + it->second->getOptCmd();
+			if(!(count % 5)) cout << endl;
+				cout << setw(12) << left << cmd;
+		}
+		reprintCmd();
+		return;
+	}
+
+	vector<string>cmd_list;
+	for(CmdMap::iterator it = _cmdMap.begin(); it != _cmdMap.end(); ++it){
+		string cmd = it->first + it->second->getOptCmd();
+		cmd_list.push_back(cmd);
+	}
+	vector<string>cmds;
+	if(cur_pos <= cmd_end_pos){
+		getCmdList(cmd, cmds, cmd_list);
+		int n = cmds.size();
+		if(n==0){ // Case 4
+			mybeep();
+		} else if (n == 1){ // Case 3
+			string stdcmd = cmds.at(0);
+			for(size_t i = cmd.size(); i < stdcmd.size(); ++i){
+				insertChar(stdcmd[i]);
+			}
+			insertChar(' ');
+		} else { // Case 2
+			for(size_t i = 0; i < cmds.size(); ++i){
+				if(!(i % 5)) cout << endl;
+					cout << setw(12) << left << cmds.at(i);
+			}
+			reprintCmd();
+		}
+	}
+	else{
+		bool only = getCmdList(cmd, cmds, cmd_list);
+		if(only){
+			cout << endl;
+			getCmd(cmd)->usage(cout);
+			reprintCmd();
+		}
+		else{
+			mybeep();
+		}
+	}
 }
 
+// Get Tok plus version
+
+size_t
+myStrGetTok2(const string& str, string& tok, size_t pos,
+const char del){
+	size_t begin = str.find_first_not_of(del, pos);
+	if (begin == string::npos) { tok = ""; return begin; }
+	size_t end = str.find_first_of(del, begin);
+	if(end == string::npos){
+		tok = str.substr(begin);
+		return str.size();
+	}
+	tok = str.substr(begin, end - begin);
+	return end;
+}
 // cmd is a copy of the original input
 //
 // return the corresponding CmdExec* if "cmd" matches any command in _cmdMap
@@ -239,8 +364,14 @@ CmdParser::listCmd(const string& str)
 CmdExec*
 CmdParser::getCmd(string cmd)
 {
-   CmdExec* e = 0;
    // TODO...
+   CmdExec* e = 0;
+   for(map<const string, CmdExec*>::iterator it = _cmdMap.begin(); it != _cmdMap.end(); it++){
+		if(it->first.find_last_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ")+1 > cmd.size()){ continue; }
+		if(!myStrNCmp(cmd, it->first, it->first.find_last_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ")+1)){
+			e = it->second;
+		}
+	}
    return e;
 }
 

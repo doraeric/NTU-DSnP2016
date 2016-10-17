@@ -49,6 +49,7 @@ CmdParser::readCmd(istream& istr)
                                break;
          case DELETE_KEY     : deleteChar(); break;
          case NEWLINE_KEY    : newCmd = addHistory();
+	 			memset(_readBuf, 0, READ_BUF_SIZE);
                                cout << char(NEWLINE_KEY);
                                if (!newCmd) resetBufAndPrintPrompt();
                                break;
