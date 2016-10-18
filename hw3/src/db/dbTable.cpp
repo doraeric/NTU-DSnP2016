@@ -124,9 +124,10 @@ DBRow::removeCell(size_t c)
 bool
 DBSort::operator() (const DBRow& r1, const DBRow& r2) const
 {
-   // TODO: called as a functional object that compares the data in r1 and r2
-   //       based on the order defined in _sortOrder
-   return false;
+	// TODO: called as a functional object that compares the data in r1 and r2
+	//       based on the order defined in _sortOrder
+	size_t n = r1.size() - 1;
+	return r1[n] < r2[n];
 }
 
 /*****************************************/
@@ -287,6 +288,20 @@ DBTable::sort(const struct DBSort& s)
 {
 	// TODO: sort the data according to the order of columns in 's'
 	for(size_t i = 0; i < s._sortOrder.size(); ++i){
+		int idx = s._sortOrder.at(i);
+		for(size_t j = 0; j < _table.size(); ++j){
+			if(_table[j].visible.at(idx))
+				_table[j].addData(_table[j][idx]);
+			else
+				_table[j].addData(INT_MAX);
+			_table[j].visible.push_back(true);
+		}
+		//std::sort(_table.begin(), _table.end(), DBSort);
+		std::sort(_table.begin(), _table.end(), s);
+		delCol(nCols()-1);
+	}
+/*
+	for(size_t i = 0; i < s._sortOrder.size(); ++i){
 		int col = s._sortOrder.at(i);
 //cout << "start sort\n";
 		vector<int> tmp;
@@ -312,6 +327,7 @@ DBTable::sort(const struct DBSort& s)
 			}
 		}
 	}
+*/
 }
 
 void
