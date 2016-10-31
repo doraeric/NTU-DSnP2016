@@ -159,7 +159,9 @@ class MemRecycleList
 	// Iterate to the next element after 'p' in the recycle list
 	T* getNext(T* p) const {
 		// TODO
-		return (T*)&(*p);
+		T *ret;
+		memcpy(&ret, p, SIZE_T);
+		return ret;
 	}
 	//
 	// count the number of elements in the recycle list
@@ -389,7 +391,6 @@ private:
 		//    #endif // MEM_DEBUG
 
 		if(_activeBlock->getMem(t, ret)){
-			cout << "success\n";
 		}
 		// memory not enough
 		else {
