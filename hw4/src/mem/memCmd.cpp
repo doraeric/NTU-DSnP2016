@@ -11,6 +11,7 @@
 #include "memTest.h"
 #include "cmdParser.h"
 #include "util.h"
+#include "rnGen.h"
 
 using namespace std;
 
@@ -78,9 +79,69 @@ MTResetCmd::help() const
 CmdExecStatus
 MTNewCmd::exec(const string& option)
 {
-   // TODO
+	// TODO
+	// check option
+	vector<string> options;
+	if (!CmdExec::lexOptions(option, options))
+		return CMD_EXEC_ERROR;
+	if (options.empty())
+		return CmdExec::errorOption(CMD_OPT_MISSING, "");
+	bool arr = false;
+	int count[] = {1, 0};
+	int nobj, narr;
+	for (size_t i = 0, n = options.size(); i < n; ++i) {
+		if (count[0]){
+			if(!myStr2Int(options[i], nobj)) // var
+				return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]);
+			count[0]--;
+		} else if (count[1]){
+			if(!myStr2Int(options[i], narr)) // var
+				return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]);
+			count[1]--;
+		} else if (!myStrNCmp("-Array" , options[i], 2)) {
+			arr = true;
+			count[1]   = 1; // var
+		} else { return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]); }
+	} if(count[0] || count[1]) return CmdExec::errorOption(CMD_OPT_MISSING, "");
 
-   return CMD_EXEC_DONE;
+	/*=========================================
+	vector<string> options;
+	bool doArr = false;
+	int num = 0, arr = 0;
+
+	if (!CmdExec::lexOptions(option, options))
+		return CMD_EXEC_ERROR;
+	if (options.empty())
+		return CmdExec::errorOption(CMD_OPT_MISSING, "numObjects");
+	else if (options.size() == 1){
+		if (!myStr2Int(options[0], num)) {
+			return CMD_EXEC_ERROR;
+		}
+	}
+	else if (options.size() < 4){
+		if (myStrNCmp("-Array", options[1], 2) == 0) doArr = true;
+		else return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[0]);
+		if (options.size() < 3)
+			return CmdExec::errorOption(CMD_OPT_MISSING, "arraySize");
+		if (!myStr2Int(options[2], arr)) return CMD_EXEC_ERROR;
+	}
+	else {
+		string errstr;
+		for(size_t i = 2; i < options.size(); ++i)
+			errstr += " " + options.at(i);
+		errorOption(CMD_OPT_EXTRA, errstr);
+		return CMD_EXEC_ERROR;
+	}
+	================================================*/
+
+	try{
+		if(!arr)	mtest.newObjs(nobj);
+		else	mtest.newArrs(nobj, narr);
+	}
+	catch (bad_alloc& e){
+		return CMD_EXEC_ERROR;
+	}
+	return CMD_EXEC_DONE;
 }
 
 void
@@ -103,9 +164,70 @@ MTNewCmd::help() const
 CmdExecStatus
 MTDeleteCmd::exec(const string& option)
 {
-   // TODO
+	// TODO
 
-   return CMD_EXEC_DONE;
+	// check option
+	vector<string> options;
+	if (!CmdExec::lexOptions(option, options))
+		return CMD_EXEC_ERROR;
+	if (options.empty())
+		return CmdExec::errorOption(CMD_OPT_MISSING, "");
+	bool ind = false, ran = false, arr = false;
+	bool group[] = {false, false};
+	int count = 0;
+	int id;
+	for (size_t i = 0, n = options.size(); i < n; ++i) {
+		if (count){
+			if(!myStr2Int(options[i], id)) // var
+				return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]);
+			count--;
+		} else if (!myStrNCmp("-Index" , options[i], 2)) {
+			int gid = 0; // var
+			count   = 1; // var
+			if(group[gid]) return CmdExec::errorOption(CMD_OPT_EXTRA,options[i]);
+			group[gid] = true;
+			ind = true;
+		} else if (!myStrNCmp("-Random", options[i], 2)) {
+			int gid = 0; // var
+			count   = 1; // var
+			if(group[gid]) return CmdExec::errorOption(CMD_OPT_EXTRA,options[i]);
+			group[gid] = true;
+			ran = true;
+		} else if (!myStrNCmp("-Array" , options[i], 2)) {
+			int gid = 1; // var
+			count   = 0; // var
+			if(group[gid]) return CmdExec::errorOption(CMD_OPT_EXTRA,options[i]);
+			group[gid] = true;
+			arr = true;
+		} else { return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]); }
+	} if(count) return CmdExec::errorOption(CMD_OPT_MISSING, "");
+	if(!(ind || ran)) return CmdExec::errorOption(CMD_OPT_MISSING, "");
+
+	if(ind && arr){
+		if(id >= 0 && id < (int)mtest.getArrListSize())
+			mtest.deleteArr(id);
+	}
+	else if (ind){
+		if(id >= 0 && id < (int)mtest.getObjListSize())
+			mtest.deleteObj(id);
+	}
+	else {
+		if(id >0)
+		for (int i = 0; i < id; ++i){
+			int randnum = rnGen(0);
+			if(arr){
+				if(randnum >= 0 && randnum < (int)mtest.getArrListSize())
+					mtest.deleteArr(randnum);
+			}
+			else {
+				if(randnum >= 0 && randnum < (int)mtest.getObjListSize())
+					mtest.deleteObj(randnum);
+			}
+		}
+	}
+		
+
+	return CMD_EXEC_DONE;
 }
 
 void

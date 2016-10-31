@@ -54,23 +54,31 @@ public:
    size_t getArrListSize() const { return _arrList.size(); }
 
    // Allocate "n" number of MemTestObj elements
-   void newObjs(size_t n) {
-      // TODO
-   }
-   // Allocate "n" number of MemTestObj arrays with size "s"
-   void newArrs(size_t n, size_t s) {
-      // TODO
-   }
-   // Delete the object with position idx in _objList[]
-   void deleteObj(size_t idx) {
-      assert(idx < _objList.size());
-      // TODO
-   }
-   // Delete the array with position idx in _arrList[]
-   void deleteArr(size_t idx) {
-      assert(idx < _arrList.size());
-      // TODO
-   }
+	void newObjs(size_t n) {
+		// TODO
+		for(size_t i = 0; i < n; ++i)
+			_objList.push_back(new MemTestObj);
+	}
+	// Allocate "n" number of MemTestObj arrays with size "s"
+	void newArrs(size_t n, size_t s) {
+		// TODO
+		for(size_t i = 0; i < n; ++i)
+			_arrList.push_back(new MemTestObj[s]);
+	}
+	// Delete the object with position idx in _objList[]
+	void deleteObj(size_t idx) {
+		assert(idx < _objList.size());
+		// TODO
+		delete _objList.at(idx);
+		_objList.erase(_objList.begin() + idx);
+	}
+	// Delete the array with position idx in _arrList[]
+	void deleteArr(size_t idx) {
+		assert(idx < _arrList.size());
+		// TODO
+		delete [] _arrList.at(idx);
+		_arrList.erase(_arrList.begin() + idx);
+	}
 
    void print() const {
       #ifdef MEM_MGR_H
