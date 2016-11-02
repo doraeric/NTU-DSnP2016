@@ -69,17 +69,21 @@ public:
 	void deleteObj(size_t idx) {
 		assert(idx < _objList.size());
 		// TODO
-		delete _objList.at(idx);
-		_objList.at(idx) = NULL;
-		//_objList.erase(_objList.begin() + idx);
+		if(_objList.at(idx)){
+			delete _objList.at(idx);
+			_objList.at(idx) = NULL;
+			//_objList.erase(_objList.begin() + idx);
+		}
 	}
 	// Delete the array with position idx in _arrList[]
 	void deleteArr(size_t idx) {
 		assert(idx < _arrList.size());
 		// TODO
-		delete [] _arrList.at(idx);
-		_arrList.at(idx) = NULL;
-		//_arrList.erase(_arrList.begin() + idx);
+		if(_arrList.at(idx)){
+			delete [] _arrList.at(idx);
+			_arrList.at(idx) = NULL;
+			//_arrList.erase(_arrList.begin() + idx);
+		}
 	}
 
    void print() const {

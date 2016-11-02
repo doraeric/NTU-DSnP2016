@@ -12,6 +12,7 @@
 #include "cmdParser.h"
 #include "util.h"
 #include "rnGen.h"
+#include <sstream>
 
 using namespace std;
 
@@ -90,17 +91,21 @@ MTNewCmd::exec(const string& option)
 	int count[] = {1, 0};
 	int nobj, narr;
 	for (size_t i = 0, n = options.size(); i < n; ++i) {
-		if (count[0]){
+		/*if (count[0]){
 			if(!myStr2Int(options[i], nobj)) // var
 				return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]);
 			count[0]--;
-		} else if (count[1]){
+		} else */if (count[1]){
 			if(!myStr2Int(options[i], narr)) // var
 				return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]);
 			count[1]--;
 		} else if (!myStrNCmp("-Array" , options[i], 2)) {
 			arr = true;
 			count[1]   = 1; // var
+		} else if (count[0]) {
+			if(!myStr2Int(options[i], nobj)) // var
+				return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]);
+			count[0]--;
 		} else { return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[i]); }
 	} if(count[0] || count[1]) return CmdExec::errorOption(CMD_OPT_MISSING, "");
 
@@ -135,8 +140,15 @@ MTNewCmd::exec(const string& option)
 	================================================*/
 
 	try{
+		if(!nobj)
+				return CmdExec::errorOption(CMD_OPT_ILLEGAL, "0");
 		if(!arr)	mtest.newObjs(nobj);
-		else	mtest.newArrs(nobj, narr);
+		else {
+			if (!narr){
+				return CmdExec::errorOption(CMD_OPT_ILLEGAL, "0");
+			}
+			mtest.newArrs(nobj, narr);
+		}
 	}
 	catch (bad_alloc& e){
 		return CMD_EXEC_ERROR;
@@ -206,22 +218,42 @@ MTDeleteCmd::exec(const string& option)
 	if(ind && arr){
 		if(id >= 0 && id < (int)mtest.getArrListSize())
 			mtest.deleteArr(id);
+		else {
+			cout << "Size of array list (" << mtest.getArrListSize() << ") is <= "
+				<< id << "!!\n";
+			stringstream ss;
+			ss << id;
+			return CmdExec::errorOption(CMD_OPT_ILLEGAL, ss.str());
+		}
 	}
 	else if (ind){
 		if(id >= 0 && id < (int)mtest.getObjListSize())
 			mtest.deleteObj(id);
+		else {
+			cout << "Size of array list (" << mtest.getObjListSize() << ") is <= "
+				<< id << "!!\n";
+			stringstream ss;
+			ss << id;
+			return CmdExec::errorOption(CMD_OPT_ILLEGAL, ss.str());
+		}
 	}
 	else {
-		if(id >0)
+//		cout << "random delete line 219\n";
+		if(id <= 0){
+			stringstream ss;
+			ss << id;
+			return CmdExec::errorOption(CMD_OPT_ILLEGAL, ss.str());
+		}
 		for (int i = 0; i < id; ++i){
-			int randnum = rnGen(0);
 			if(arr){
+				int randnum = rnGen(mtest.getArrListSize());
 				if(randnum >= 0 && randnum < (int)mtest.getArrListSize())
-					mtest.deleteArr(randnum);
+					mtest.deleteArr(randnum); //cout << "randnum: " << randnum << endl;
 			}
 			else {
+				int randnum = rnGen(mtest.getObjListSize());
 				if(randnum >= 0 && randnum < (int)mtest.getObjListSize())
-					mtest.deleteObj(randnum);
+					mtest.deleteObj(randnum); //cout << "randnum: " << randnum << endl;
 			}
 		}
 	}
