@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <stdlib.h>
 #include <cstring>
+#include <vector>
 
 using namespace std;
 
@@ -146,12 +147,23 @@ class MemRecycleList
 	// DO NOT release the memory occupied by MemMgr/MemBlock
 	void reset() {
 		// TODO
-		MemRecycleList<T>* prev, *tmpPtr = _nextList;
+		_first = 0;
+		_nextList = 0;
+		/*MemRecycleList<T>* prev, *tmpPtr = _nextList;
+		vector<void*> deletedPtr;
 		while(tmpPtr){
+			bool flag = false;
 			prev = tmpPtr;
 			tmpPtr = tmpPtr->_nextList;
+			for(size_t i = 0; i < deletedPtr.size(); ++i){
+				if (prev == deletedPtr[i])
+					flag = true;
+			}
+			if (flag) continue;
 			delete prev;
-		}
+			deletedPtr.push_back(prev);
+		} I don't care `_'  !!! */
+		delete _nextList;
 	}
 
 	// Helper functions

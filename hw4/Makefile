@@ -55,10 +55,10 @@ ctags:
 	@for pkg in $(SRCPKGS); \
 	do \
 		echo "Tagging $$pkg..."; \
-		cd src; ctags -a $$pkg/*.cpp $$pkg/*.h; cd ..; \
+		cd src; ctags --fields=+l -a $$pkg/*.cpp $$pkg/*.h; cd ..; \
 	done
 	@echo "Tagging $(MAIN)..."
-	@cd src; ctags -a $(MAIN)/*.cpp
+	@cd src; ctags --fields=+l -a $(MAIN)/*.cpp
 
 32 64 mac:
 	@for pkg in $(REFPKGS); \
