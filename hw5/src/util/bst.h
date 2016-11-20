@@ -44,11 +44,11 @@ class BSTree
 public:
    BSTree(){
       //_dummy_node = new BSTreeNode<T>(T());
-      _root_node = _dummy_node = new BSTreeNode<T>(T());
+      _root_node = _dummy_node = 0;
    }
    ~BSTree() {
       clear();
-      delete _dummy_node;
+      //delete _dummy_node;
    } // delete or clear();
 
    class iterator {
@@ -62,15 +62,45 @@ public:
       const T& operator * () const { return _node->_data; }
       T& operator * () { return _node->_data; }
       iterator& operator ++ () {
-         _next();
+         //std::cout << "inside ++\n";
+         if(_node->_right) {
+            _node = _node->_right;
+            while(_node->_left) _node = _node->_left;
+            return *this;
+         }
+         while (_node->_parent){
+            if(_node == _node->_parent->_right){
+               _node = _node->_parent;
+            }
+            else{
+               _node = _node->_parent;
+               return *this;
+            }
+         }
+         _node = 0;
          return *this;
          // else if(_node->_parent) _node = _node->_parent;
          //else _node = _node->end();
          return *this;
       }
-      iterator operator ++ (int) { iterator clone(_node); _next(); return clone; }
+      iterator operator ++ (int) { iterator clone(_node); ++_node; return clone; }
       iterator& operator -- () {
-         _prev();
+         if(_node->_left) {
+            while(_node->_right){
+               _node = _node->_right;
+            }
+            return *this;
+         }
+         while(_node->_parent){
+            if(_node == _node->_parent->_left) {
+               _node = _node->_parent;
+            }
+            else {
+               _node = _node->_parent;
+               return *this;
+            }
+         }
+         _node = 0;
          return *this;
 //         else if(_node->_parent) {
 //            if(_node == _node->_parent->_right) return _node->_parent;
@@ -84,7 +114,7 @@ public:
 //            return _node->end();
 //         }
       }
-      iterator operator -- (int) { iterator clone(_node); _prev(); return clone; }
+      iterator operator -- (int) { iterator clone(_node); _node = _node->_left; return clone; }
 
       iterator& operator = (const iterator& i) { _node = i._node; return *(this); }
 
@@ -93,49 +123,6 @@ public:
 
    private:
       BSTreeNode<T>* _node;
-      void _prev(){
-//std::cout << "operator--\n";
-         if(_node->_left) {
-            while(_node->_right){
-               _node = _node->_right;
-            }
-            return;// *this;
-         }
-         while(_node->_parent){
-//std::cout << "_node->_parent\n";
-            if(_node == _node->_parent->_left) {
-               _node = _node->_parent;
-            }
-            else {
-//std::cout << "_node->_parent->_right\n";
-               _node = _node->_parent;
-//std::cout << _node->_data << "\n";
-//std::cout << _node->_data <<  " at: " << _node << "\n";
-//std::cout << "parent" <<  " at: " << _node->_parent << "\n";
-               return;// *this;
-            }
-         }
-//std::cout << "_node = 0\n";
-         _node = 0;
-      }
-      void _next(){
-         //std::cout << "inside ++\n";
-         if(_node->_right) {
-            _node = _node->_right;
-            while(_node->_left) _node = _node->_left;
-            return;// *this;
-         }
-         while (_node->_parent){
-            if(_node == _node->_parent->_right){
-               _node = _node->_parent;
-            }
-            else{
-               _node = _node->_parent;
-               return;// *this;
-            }
-         }
-         _node = 0;
-      }
    };
 
    iterator begin() const {
@@ -145,10 +132,9 @@ public:
       return iterator(i);
    }
    iterator end() const {
-      BSTreeNode<T>* i = _root_node;
-      while(i->_right) i = i->_right;
-      std::cout << "end()\n";
-      return iterator(i);
+//      BSTreeNode<T>* i = _root_node;
+//      while(i->_right) i = i->_right;
+      return iterator();
    }
 
    bool travel(T d, BSTreeNode<T>*& n){
@@ -160,7 +146,7 @@ public:
          return false;
       }
       else{
-         if (n->_right != _dummy_node){
+         if (n->_right){
             n = n->_right;
             return travel(d, n);
          }
@@ -173,9 +159,6 @@ public:
    void insert(const T& d){
       if(_root_node == _dummy_node){
          _root_node = new BSTreeNode<T>(d);
-         _root_node->_right = _dummy_node;
-         _dummy_node->_parent = _root_node;
-//std::cout << d<< " at: " << _root_node;
          return;
       }
       BSTreeNode<T>* n = _root_node;
@@ -184,20 +167,12 @@ public:
          n->_left = new BSTreeNode<T>(d, n);
       }
       else{
-         if(!n->_right)
-            n->_right = new BSTreeNode<T>(d, n);
-         else {
-            BSTreeNode<T>* temp = n->_right;
-            n->_right = new BSTreeNode<T>(d, n);
-//std::cout << d<< " at: " << n->_right;
-            n->_right->_right = temp;
-            temp->_parent = n->_right;
-         }
+         n->_right = new BSTreeNode<T>(d, n);
       }
    }
 
    bool erase(const T& d) {
-      if(_root_node == _dummy_node) return false;
+      if(!_root_node) return false;
       BSTreeNode<T>* n = _root_node;
       bool exist = travel(d, n);
       if(exist){
@@ -208,7 +183,7 @@ public:
    }
 
    bool erase(iterator pos){
-      if(pos._node == _dummy_node) return false;
+      if(!pos._node) return false;
       if(pos._node->_parent){
 //         std::cout << "erase()\n";
          if(pos._node == pos._node->_parent->_left) {
@@ -258,9 +233,8 @@ public:
             delete pos._node;
          }
          else{
-            // should not happen
-            _root_node = _dummy_node;
-            //delete pos._node;
+            _root_node = 0;
+            delete pos._node;
          }
       }
       return true;
@@ -281,7 +255,7 @@ public:
       erase(iterator(last));
    }
 
-   bool empty() const { return _root_node == _dummy_node; }
+   bool empty() const { return !_root_node; }
 
    size_t size() const {
       if(empty()) return 0;
