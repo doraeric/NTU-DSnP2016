@@ -11,6 +11,7 @@
 *.tgz
 *.docx
 *.doc
+*.odt
 *.pdf
 
 # Compiled object files
