@@ -19,6 +19,47 @@ using namespace std;
 #include "cirDef.h"
 
 extern CirMgr *cirMgr;
+enum CirErrCode {
+   EXTRA_SPACE,
+   MISSING_SPACE,
+   ILLEGAL_WSPACE,
+   ILLEGAL_NUM,
+   ILLEGAL_IDENTIFIER,
+   ILLEGAL_SYMBOL_TYPE,
+   ILLEGAL_SYMBOL_NAME,
+   MISSING_NUM,
+   MISSING_IDENTIFIER,
+   MISSING_NEWLINE,
+   MISSING_DEF,
+   CANNOT_INVERTED,
+   MAX_LIT_ID,
+   REDEF_GATE,
+   REDEF_SYMBOLIC_NAME,
+   REDEF_CONST,
+   NUM_TOO_SMALL,
+   NUM_TOO_BIG,
+
+   DUMMY_END
+};
+
+class ParserString : public std::string {
+   // substr will lost col and line number
+public:
+   ParserString(std::string str) : std::string(str), lineNo(0), colNo(0) {}
+   void parse(std::string &);
+   void parse(size_t &);
+   void parse(const char delimiter);
+   void parsePI(size_t &);
+   void parsePO(size_t &);
+   void parseAIG(size_t &);
+   bool parseline();
+   bool parseline(std::string &);
+   size_t lineNo;
+   size_t colNo;
+   bool parseError(CirErrCode);
+   string errMsg;
+   int errInt;
+};
 
 // TODO: Define your own data members and member functions
 class CirMgr
@@ -29,7 +70,7 @@ public:
 
    // Access functions
    // return '0' if "gid" corresponds to an undefined gate.
-   CirGate* getGate(unsigned gid) const { return 0; }
+   CirGate* getGate(unsigned/* gid*/) const { return 0; }
 
    // Member functions about circuit construction
    bool readCircuit(const string&);
@@ -43,6 +84,8 @@ public:
    void writeAag(ostream&) const;
 
 private:
+   vector<CirGate*> _gateList;
+   string _output;
 };
 
 #endif // CIR_MGR_H

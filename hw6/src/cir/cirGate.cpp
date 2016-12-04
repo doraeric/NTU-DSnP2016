@@ -24,6 +24,13 @@ extern CirMgr *cirMgr;
 /**************************************/
 /*   class CirGate member functions   */
 /**************************************/
+
+void CirGate::set(GateType gtype, size_t line, size_t in1, size_t in2) {
+   if (_gtype == CONST_GATE) throw REDEF_CONST;
+   if (_gtype != UNDEF_GATE) throw REDEF_GATE;
+   _gtype = gtype; _lineNum = line; _fanin1 = in1; _fanin2 = in2;
+}
+
 void
 CirGate::reportGate() const
 {
