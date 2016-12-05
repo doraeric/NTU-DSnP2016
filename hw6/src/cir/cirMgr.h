@@ -70,21 +70,30 @@ public:
 
    // Access functions
    // return '0' if "gid" corresponds to an undefined gate.
-   CirGate* getGate(unsigned/* gid*/) const { return 0; }
+   CirGate* getGate(unsigned gid) const {
+      if (gid >= _gateList.size()) return 0;
+      return _gateList[gid];
+   }
 
    // Member functions about circuit construction
    bool readCircuit(const string&);
 
    // Member functions about circuit reporting
+   void unwalked() const;
    void printSummary() const;
+   void printSubNL(size_t & i, size_t vid) const;
    void printNetlist() const;
    void printPIs() const;
    void printPOs() const;
    void printFloatGates() const;
    void writeAag(ostream&) const;
+   friend class CirGate;
 
 private:
    vector<CirGate*> _gateList;
+   struct Header { size_t M, I, L, O, A; } _header;
+   vector<size_t> _PI;
+   vector<size_t> _POi;
    string _output;
 };
 

@@ -246,16 +246,19 @@ CirMgr::readCircuit(const string& fileName)
       if (L) { strfile.errMsg = "latches"; throw ILLEGAL_NUM; }
       strfile.parse(O); strfile.parse(' ');
       strfile.parse(A); strfile.parse('\n');
+      _header.M = M; _header.I = I; _header.L = L; _header.O = O; _header.A = A;
       _gateList.reserve(M + O + 1);
+      _PI.reserve(I); _POi.reserve(O);
       // TODO need delete if fail
-      _gateList.push_back(new CirGate(CONST_GATE));
+      _gateList.push_back(new CirGate(this, 0, CONST_GATE));
       for (size_t i = 0; i < M + O; ++i){
-         _gateList.push_back(new CirGate());
+         _gateList.push_back(new CirGate(this, i+1));
       }
       for (size_t  i = 0; i < I; ++i){
          size_t idx;
          strfile.parsePI(idx);
          _gateList[idx]->set(PI_GATE, strfile.lineNo + 1);
+         _PI.push_back(idx);
          strfile.parse('\n');
       }
       /*for ( size_t i = 0; i < L; ++i) {
@@ -265,6 +268,7 @@ CirMgr::readCircuit(const string& fileName)
          size_t po_fanin; // TODO need complete parse for PO, AIG
          strfile.parse(po_fanin);
          _gateList[M + 1 + i]->set(PO_GATE, strfile.lineNo + 1, po_fanin);
+         _POi.push_back(po_fanin);
          strfile.parse('\n');
       }
       for ( size_t i = 0; i < A; ++i) {
@@ -315,18 +319,93 @@ Circuit Statistics
 void
 CirMgr::printSummary() const
 {
-   cout << "cirMgr.cpp :177\n";
+#ifdef DEBUG_INFO
+   cout << "\033[1;31m";
+   cout << __FILE__ << ": " << __func__ << " line:" << __LINE__ << endl;
+   cout << "\033[0m";
+#endif // DEBUG_INFO
+   cout << "Circuit Statistics\n"
+      << "==================\n"
+      << "PI    " << setw(8) << _header.I << endl
+      << "PO    " << setw(8) << _header.O << endl
+      << "AIG   " << setw(8) << _header.A << endl
+      << "------------------\n"
+      << "Total " << setw(8) << _header.I + _header.O + _header.A << endl
+      ;
 }
 
-void
-CirMgr::printNetlist() const
-{
+void CirMgr::unwalked() const {
+   for (size_t i = 0; i < _gateList.size(); ++i) {
+      _gateList[i]->_walked = false;
+   }
+}
+
+void CirMgr::printSubNL(size_t & i, size_t vid) const {
+   if (_gateList[vid]->_walked) return;
+   _gateList[vid]->_walked = true;
+   GateType gtype = _gateList[vid]->getType();
+   if (gtype == CONST_GATE || gtype == PI_GATE){
+      cout << "[" << i << "] ";
+      ++i;
+      if (gtype == CONST_GATE) {
+         cout << "CONST0\n";
+         return;
+      }
+      cout << "PI  " << vid;
+      string s = _gateList[vid]->getSymbol();
+      if (s != "") {
+         cout << " (" << s << ")\n";
+      }
+      else { cout << endl; }
+      return;
+   }
+   if (gtype == PO_GATE) {
+      size_t data = _gateList[vid]->_fanin1;
+      if (_gateList[data/2]->_gtype != UNDEF_GATE) {
+         printSubNL(i, data/2);
+      }
+      cout << "[" << i << "] PO  " << vid << " "
+         << (_gateList[data/2]->_gtype == UNDEF_GATE ? "*" : "")
+         << (data%2 ? "!" : "") << data/2
+         << /*sym*/ endl;
+      ++i;
+      return;
+   }
+   else if (gtype == AIG_GATE) {
+      size_t data1 = _gateList[vid]->_fanin1;
+      if (_gateList[data1/2]->_gtype != UNDEF_GATE) {
+         printSubNL(i, data1/2);
+      }
+      size_t data2 = _gateList[vid]->_fanin2;
+      if (_gateList[data2/2]->_gtype != UNDEF_GATE) {
+         printSubNL(i, data2/2);
+      }
+      cout << "[" << i << "] AIG " << vid << " "
+         << (_gateList[data1/2]->_gtype == UNDEF_GATE ? "*" : "")
+         << (data1%2 ? "!" : "") << data1/2 << " "
+         << (_gateList[data2/2]->_gtype == UNDEF_GATE ? "*" : "")
+         << (data2%2 ? "!" : "") << data2/2
+         << /*sym*/ endl;
+      ++i;
+      return;
+   }
+}
+
+void CirMgr::printNetlist() const {
+   unwalked();
+   size_t i = 0;
+   for (size_t oi = _header.M + 1; oi < _gateList.size(); ++oi){
+      printSubNL(i, oi);
+   }
 }
 
 void
 CirMgr::printPIs() const
 {
    cout << "PIs of the circuit:";
+   for (size_t i = 0, sz = _PI.size(); i < sz; ++i) {
+      cout << " " << _PI[i];
+   }
    cout << endl;
 }
 
@@ -334,12 +413,54 @@ void
 CirMgr::printPOs() const
 {
    cout << "POs of the circuit:";
+   for (size_t i = 0, sz = _POi.size(); i < sz; ++i) {
+      cout << " " << _POi[i];
+   }
    cout << endl;
 }
 
 void
 CirMgr::printFloatGates() const
 {
+   vector<int> fl;
+   for (size_t i = 1; i <= _header.M; ++i) {
+      if (_gateList[i]->_gtype == AIG_GATE) {
+         size_t vid1, vid2;
+         vid1 = _gateList[i]->_fanin1 / 2;
+         vid2 = _gateList[i]->_fanin2 / 2;
+         if(_gateList[vid1]->_gtype == UNDEF_GATE || _gateList[vid2]->_gtype == UNDEF_GATE) {
+            fl.push_back(i);
+         }
+      }
+   }
+   if (!fl.empty()) {
+      cout << "Gates with floating fanin(s):";
+      for(size_t i = 0, sz = fl.size(); i < sz; ++i) {
+         cout << " " << fl[i];
+      }
+      cout << endl;
+   }
+   unwalked();
+   for (size_t i = 1, sz = _gateList.size(); i < sz; ++i) {
+         size_t vid1, vid2;
+         vid1 = _gateList[i]->_fanin1 / 2;
+         vid2 = _gateList[i]->_fanin2 / 2;
+         _gateList[vid1]->_walked = true;
+         _gateList[vid2]->_walked = true;
+   }
+   vector<int> unused;
+   for (size_t i = 1, sz = _header.M; i <= sz; ++i) {
+      if(_gateList[i]->_gtype != UNDEF_GATE && !_gateList[i]->_walked) {
+         unused.push_back(i);
+      }
+   }
+   if(!unused.empty()) {
+      cout << "Gates defined but not used :";
+      for(size_t i = 0, sz = unused.size(); i < sz; ++i) {
+         cout << " " << unused[i];
+      }
+      cout << endl;
+   }
 }
 
 void
