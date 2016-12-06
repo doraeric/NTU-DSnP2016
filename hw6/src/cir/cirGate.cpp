@@ -31,6 +31,13 @@ void CirGate::set(GateType gtype, size_t line, size_t in1, size_t in2) {
    _gtype = gtype; _lineNum = line; _fanin1 = in1; _fanin2 = in2;
 }
 
+void CirGate::setSymbol(const string & symbol) {
+   if (_symbol != "") {
+      throw REDEF_SYMBOLIC_NAME;
+   }
+   _symbol = symbol;
+}
+
 void CirGate::printFan(int level, string pre, vector<vector<int> > & lists) const {
    if(level <=0) return;
    vector<int> & list = lists.at(_id);

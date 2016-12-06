@@ -201,7 +201,6 @@ void ParserString::parsePO(size_t & idx) {
    // TODO check range
 }
 
-
 void ParserString::parseAIG(size_t & idx) {
    parse(idx);
    if (idx % 2) {
@@ -217,6 +216,36 @@ void ParserString::parseAIG(size_t & idx) {
    idx /= 2;
 }
 
+bool ParserString::parseSymbol(GateType & gt, size_t & idx, string & symbol) {
+   if (this->empty()) return false;
+   if (!(this->at(0) == 'i' || this->at(0) == 'o' || this->at(0) == 'c')){
+      errMsg = this->at(0);
+      throw ILLEGAL_SYMBOL_TYPE;
+   }
+   if (this->at(0) == 'c') {
+      colNo = 1;
+      if (this->size() < 2) throw MISSING_NEWLINE;
+      if (this->at(1) != '\n') throw MISSING_NEWLINE;
+      this->erase(0, 2);
+      ++lineNo; colNo = 0;
+      return false;
+   }
+   gt = (this->at(0) == 'i' ? PI_GATE : PO_GATE);
+   this->erase(0, 1);
+   ++colNo;
+   try {
+      parse(idx);
+   } catch (CirErrCode e) {
+      if (e == MISSING_NUM || e == EXTRA_SPACE){
+         errMsg = "symbol index";
+         throw MISSING_NUM;
+      }
+      throw e;
+   }
+   parse(' ');
+   parse(symbol);
+   return true;
+}
 
 /**************************************************************/
 /*   class CirMgr member functions for circuit construction   */
@@ -225,7 +254,6 @@ bool
 CirMgr::readCircuit(const string& fileName)
 {
    ifstream file(fileName.c_str());
-   // hw2 p2Table.cpp
    if(!file) {
       cout << "Cannot open design " << fileName << "!!\n";
       return false;
@@ -279,14 +307,56 @@ CirMgr::readCircuit(const string& fileName)
          _gateList[idx]->set(AIG_GATE, strfile.lineNo + 1, in1, in2);
          strfile.parse('\n');
       }
-      for (size_t i = 0; i < M + O + 1; ++i) {
+      GateType gt;
+      size_t idx;
+      string symbol;
+      while (strfile.parseSymbol(gt, idx, symbol)){
+         if (gt == PI_GATE) {
+            if (idx >= _header.I) {
+               strfile.errMsg = "PI index";
+               strfile.errInt = idx;
+               throw NUM_TOO_BIG;
+            }
+            try {
+               _gateList[_PI[idx]]->setSymbol(symbol);
+            } catch (CirErrCode e) {
+               if (e == REDEF_SYMBOLIC_NAME) {
+                  strfile.errMsg = "i";
+                  strfile.errInt = idx;
+               }
+               throw e;
+            }
+         }
+         else {
+            if (idx >= _header.O) {
+               strfile.errMsg = "PO index";
+               strfile.errInt = idx;
+               throw NUM_TOO_BIG;
+            }
+            try {
+               _gateList[M + 1 + idx]->setSymbol(symbol);
+            } catch (CirErrCode e) {
+               if (e == REDEF_SYMBOLIC_NAME) {
+                  strfile.errMsg = "o";
+                  strfile.errInt = idx;
+               }
+               throw e;
+            }
+         }
+         strfile.parse('\n');
+      }
+      _comments = strfile;
+      if (!_comments.empty() && _comments.at(_comments.size() - 1) != '\n'){
+         _comments += "\n";
+      }
 #ifdef DEBUG_INFO
-   cout << "\033[1;31m";
+      for (size_t i = 0; i < M + O + 1; ++i) {
+         cout << "\033[1;31m";
          cout << "[" << setw(2) << i << "]";
          _gateList[i]->printInfo();
-   cout << "\033[0m";
-#endif
+         cout << "\033[0m";
       }
+#endif
 #ifdef DEBUG_INFO
       cout << "\033[1;31m";
       cout << "success\n";
@@ -352,14 +422,14 @@ void CirMgr::printSubNL(size_t & i, size_t vid) const {
          return;
       }
       cout << "PI  " << vid;
-      string s = _gateList[vid]->getSymbol();
+      string s = _gateList[vid]->_symbol;
       if (s != "") {
          cout << " (" << s << ")\n";
       }
       else { cout << endl; }
       return;
    }
-   if (gtype == PO_GATE) {
+   else if (gtype == PO_GATE) {
       size_t data = _gateList[vid]->_fanin1;
       if (_gateList[data/2]->_gtype != UNDEF_GATE) {
          printSubNL(i, data/2);
@@ -367,7 +437,8 @@ void CirMgr::printSubNL(size_t & i, size_t vid) const {
       cout << "[" << i << "] PO  " << vid << " "
          << (_gateList[data/2]->_gtype == UNDEF_GATE ? "*" : "")
          << (data%2 ? "!" : "") << data/2
-         << /*sym*/ endl;
+         << (_gateList[vid]->_symbol.empty() ? "" : " (" + _gateList[vid]->_symbol + ")")
+         << endl;
       ++i;
       return;
    }
@@ -385,10 +456,43 @@ void CirMgr::printSubNL(size_t & i, size_t vid) const {
          << (data1%2 ? "!" : "") << data1/2 << " "
          << (_gateList[data2/2]->_gtype == UNDEF_GATE ? "*" : "")
          << (data2%2 ? "!" : "") << data2/2
-         << /*sym*/ endl;
+         << (_gateList[vid]->_symbol.empty() ? "" : " (" + _gateList[vid]->_symbol + ")")
+         << endl;
       ++i;
       return;
    }
+   else { return; }
+}
+
+void CirMgr::writeAIGs(string & str, size_t vid) const {
+   if (_gateList[vid]->_walked) return;
+   _gateList[vid]->_walked = true;
+   GateType gtype = _gateList[vid]->getType();
+   if (gtype == CONST_GATE || gtype == PI_GATE){
+      return;
+   }
+   else if (gtype == PO_GATE) {
+      size_t data = _gateList[vid]->_fanin1;
+      if (_gateList[data/2]->_gtype != UNDEF_GATE) {
+         writeAIGs(str, data/2);
+      }
+      return;
+   }
+   else if (gtype == AIG_GATE) {
+      size_t data1 = _gateList[vid]->_fanin1;
+      if (_gateList[data1/2]->_gtype != UNDEF_GATE) {
+         writeAIGs(str, data1/2);
+      }
+      size_t data2 = _gateList[vid]->_fanin2;
+      if (_gateList[data2/2]->_gtype != UNDEF_GATE) {
+         writeAIGs(str, data2/2);
+      }
+      stringstream ss;
+      ss << vid * 2 << " " << data1 << " " << data2 << "\n";
+      str += ss.str();
+      return;
+   }
+   else { return; }
 }
 
 void CirMgr::printNetlist() const {
@@ -464,6 +568,40 @@ CirMgr::printFloatGates() const
 }
 
 void
-CirMgr::writeAag(ostream& /*outfile*/) const
+CirMgr::writeAag(ostream& outfile) const
 {
+   string aigs;
+   unwalked();
+   for (size_t oi = _header.M + 1; oi < _gateList.size(); ++oi){
+      writeAIGs(aigs, oi);
+   }
+   size_t newA = 0;
+   for (size_t i = 1, sz = _gateList.size(); i < sz; ++i) {
+      if (_gateList[i]->_gtype == AIG_GATE && _gateList[i]->_walked)
+         ++newA;
+   }
+   outfile << "aag " << _header.M << " " << _header.I << " " << _header.L
+      << " " << _header.O << " " << newA << endl;
+   for (size_t i = 0, sz = _PI.size(); i < sz; ++i){
+      outfile << _PI[i] * 2 << endl;
+   }
+   for (size_t i = 0, sz = _POi.size(); i < sz; ++i) {
+      outfile << _POi[i] << endl;
+   }
+   outfile << aigs;
+   for (size_t i = 0, sz = _PI.size(); i < sz; ++i){
+      string s = _gateList[_PI[i]]->getSymbol();
+      if (!s.empty())
+         outfile << "i" << i << " " << s << endl;
+   }
+   for (size_t i = 0, sz = _POi.size(); i < sz; ++i) {
+      string s = _gateList[_header.M + i + 1]->getSymbol();
+      if (!s.empty())
+         outfile << "o" << i << " " << s << endl;
+   }
+   bool flag = (&cout == &outfile);
+   outfile << "c\n" << _comments;
+   if (flag) outfile << "\033[1;37;44m";
+   outfile << "output by doraeric.\n";
+   if (flag) outfile << "\033[0m";
 }

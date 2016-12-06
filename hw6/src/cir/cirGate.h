@@ -42,6 +42,7 @@ public:
    void reportFanin(int level) const;
    void reportFanout(int level) const;
    void printFan(int level, string pre, vector<vector<int> > & lists) const;
+   void setSymbol(const string &);
    void set(GateType type,size_t line, size_t in1 = 0, size_t in2 = 0);
    void printInfo(){
       string type;

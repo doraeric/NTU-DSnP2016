@@ -52,8 +52,8 @@ public:
    void parsePI(size_t &);
    void parsePO(size_t &);
    void parseAIG(size_t &);
+   bool parseSymbol(GateType &, size_t & idx, string & symbol);
    bool parseline();
-   bool parseline(std::string &);
    size_t lineNo;
    size_t colNo;
    bool parseError(CirErrCode);
@@ -86,6 +86,7 @@ public:
    void printPIs() const;
    void printPOs() const;
    void printFloatGates() const;
+   void writeAIGs(string &, size_t varid) const;
    void writeAag(ostream&) const;
    friend class CirGate;
 
@@ -94,7 +95,8 @@ private:
    struct Header { size_t M, I, L, O, A; } _header;
    vector<size_t> _PI;
    vector<size_t> _POi;
-   string _output;
+   string _comments;
+//   string _output;
 };
 
 #endif // CIR_MGR_H
