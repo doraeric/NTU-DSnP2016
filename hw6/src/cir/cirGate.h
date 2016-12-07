@@ -33,7 +33,21 @@ public:
    // Basic access methods
    GateType getType() const { return _gtype; }
    string getSymbol() const { return _symbol; }
-   string getTypeStr() const { return ""; }
+// not sure what string should this return for gate CONST, UNDEF, PO
+   string getTypeStr() const {
+      if (_gtype == CONST_GATE) {
+         return "CONST";
+      } else if (_gtype == UNDEF_GATE) {
+         return "UNDEF";
+      } else if (_gtype == PI_GATE) {
+         return "PI";
+      } else if (_gtype == PO_GATE) {
+         return "PO";
+      } else if (_gtype == AIG_GATE) {
+         return "AIG";
+      }
+      return "";
+   }
    unsigned getLineNo() const { return _lineNum; }
 
    // Printing functions

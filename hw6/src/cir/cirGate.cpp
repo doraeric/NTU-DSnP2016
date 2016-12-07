@@ -72,9 +72,10 @@ CirGate::reportGate() const
       << (_symbol.empty() ? "" : "\"" + _symbol + "\"")
       << ", line " << _lineNum;
    string msg = ssMsg.str();
+   size_t len = (46 > msg.size() ? 46 - msg.size() : 0);
    cout << "==================================================\n= "
-      << msg << setw(47 - msg.size()) << ""
-      << "=\n==================================================\n";
+      << msg << setw(len) << ""
+      << " =\n==================================================\n";
 }
 
 void

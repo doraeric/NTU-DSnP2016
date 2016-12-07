@@ -19,7 +19,7 @@
 
 using namespace std;
 
-#define DEBUG_INFO
+//#define DEBUG_INFO
 
 // TODO: Implement memeber functions for class CirMgr
 
@@ -32,7 +32,8 @@ CirMgr* cirMgr = 0;
 /**************************************/
 /*   Static varaibles and functions   */
 /**************************************/
-static CirGate *errGate;
+// use objects rather than static,
+// all moved to ParserString
 
 /**************************************************************/
 /*   class ParserString                                       */
@@ -127,7 +128,14 @@ ParserString::parseError(CirErrCode  err)
 void ParserString::parse(string & str) {
    if (this->empty()) { throw MISSING_IDENTIFIER; }
    const char printableCh[] = "!\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-   if (this->find_first_of(printableCh) != 0) { throw EXTRA_SPACE; }
+   if (this->find_first_of(printableCh) != 0) {
+      if (this->at(0) == '\n') throw MISSING_IDENTIFIER;
+      if (this->at(0) <= 31 || this->at(0) == 127) {
+         errInt = this->at(0);
+         throw ILLEGAL_WSPACE;
+      }
+      throw EXTRA_SPACE;
+   }
    size_t delpos = this->find_first_not_of(printableCh);
    if (delpos == string::npos) {
       str = *this;
@@ -145,8 +153,9 @@ void ParserString::parse(size_t & num){
    try {
       parse(str);
    } catch (CirErrCode  e){
-      if (e == MISSING_IDENTIFIER)
+      if (e == MISSING_IDENTIFIER){
          throw MISSING_NUM;
+      }
       else
          throw e;
    }
@@ -181,8 +190,21 @@ bool ParserString::parseline() {
    return true;
 }
 
+// check range in Mgr, not in string
 void ParserString::parsePI(size_t & idx) {
-   parse(idx);
+   try {
+      parse(idx);
+   } catch (CirErrCode e) {
+      if (e == ILLEGAL_NUM) {
+         errMsg = "PI literal ID(" + errMsg + ")";
+         throw ILLEGAL_NUM;
+      }
+      if (e == MISSING_NUM) {
+         errMsg = "PI";
+         throw MISSING_DEF;
+      }
+      throw e;
+   }
    if (idx % 2) {
       errMsg = "PI";
       errInt = idx;
@@ -192,17 +214,39 @@ void ParserString::parsePI(size_t & idx) {
       }
       throw CANNOT_INVERTED;
    }
-   // TODO check range
    idx /= 2;
 }
 
 void ParserString::parsePO(size_t & idx) {
-   parse(idx);
-   // TODO check range
+   try {
+      parse(idx);
+   } catch (CirErrCode e) {
+      if (e == ILLEGAL_NUM) {
+         errMsg = "PO literal ID(" + errMsg + ")";
+         throw ILLEGAL_NUM;
+      }
+      if (e == MISSING_NUM) {
+         errMsg = "PO";
+         throw MISSING_DEF;
+      }
+      throw e;
+   }
 }
 
 void ParserString::parseAIG(size_t & idx) {
-   parse(idx);
+   try {
+      parse(idx);
+   } catch (CirErrCode e) {
+      if (e == ILLEGAL_NUM) {
+         errMsg = "AIG gate literal ID(" + errMsg + ")";
+         throw ILLEGAL_NUM;
+      }
+      if (e == MISSING_NUM) {
+         errMsg = "AIG";
+         throw MISSING_DEF;
+      }
+      throw e;
+   }
    if (idx % 2) {
       errMsg = "AIG";
       errInt = idx;
@@ -212,13 +256,41 @@ void ParserString::parseAIG(size_t & idx) {
       }
       throw CANNOT_INVERTED;
    }
-   // TODO check range
    idx /= 2;
+}
+
+void ParserString::parseAIGin(size_t & idx) {
+   try {
+      parse(idx);
+   } catch (CirErrCode e) {
+      if (e == ILLEGAL_NUM) {
+         errMsg = "AIG input literal ID(" + errMsg + ")";
+         throw ILLEGAL_NUM;
+      }
+      if (e == MISSING_NUM) {
+         errMsg = "AIG input literal ID";
+      }
+      throw e;
+   }
 }
 
 bool ParserString::parseSymbol(GateType & gt, size_t & idx, string & symbol) {
    if (this->empty()) return false;
    if (!(this->at(0) == 'i' || this->at(0) == 'o' || this->at(0) == 'c')){
+      string c, tmp;
+      c.push_back(this->at(0));
+      c += "\n";
+      ParserString check(c);
+      try {
+         check.parse(tmp);
+      } catch (CirErrCode e) {
+         errMsg = check.errMsg;
+         errInt = check.errInt;
+         if ( e == MISSING_IDENTIFIER) {
+            errMsg = "symbol type";
+         }
+         throw e;
+      }
       errMsg = this->at(0);
       throw ILLEGAL_SYMBOL_TYPE;
    }
@@ -236,26 +308,54 @@ bool ParserString::parseSymbol(GateType & gt, size_t & idx, string & symbol) {
    try {
       parse(idx);
    } catch (CirErrCode e) {
-      if (e == MISSING_NUM || e == EXTRA_SPACE){
+      if (e == MISSING_NUM/* || e == EXTRA_SPACE*/){
          errMsg = "symbol index";
          throw MISSING_NUM;
+      }
+      if (e == ILLEGAL_NUM) {
+         errMsg = "symbol index(" + errMsg + ")";
       }
       throw e;
    }
    parse(' ');
-   parse(symbol);
+   size_t end = this->find_first_of("\n");
+   if (end == string::npos || end == 0) {
+      errMsg = "symbolic name";
+      throw MISSING_IDENTIFIER;
+   }
+   symbol = this->substr(0, end);
+   this->erase(0, end);
+   for(size_t i = 0, sz = symbol.size(); i < sz; ++i) {
+      if (symbol.at(i) <= 31 || symbol.at(i) ==127) {
+         errInt = (int)symbol.at(i);
+         throw ILLEGAL_SYMBOL_NAME;
+      }
+      ++colNo;
+   }
+   //parse(symbol);
    return true;
 }
 
 /**************************************************************/
 /*   class CirMgr member functions for circuit construction   */
 /**************************************************************/
+void CirMgr::checkRange(size_t varid, ParserString& strfile) {
+   if (varid / 2 > _header.M) {
+      strfile.errInt = varid;
+      while(varid) {
+         --strfile.colNo;
+         varid /= 10;
+      }
+      throw MAX_LIT_ID;
+   }
+}
+
 bool
 CirMgr::readCircuit(const string& fileName)
 {
    ifstream file(fileName.c_str());
    if(!file) {
-      cout << "Cannot open design " << fileName << "!!\n";
+      cout << "Cannot open design \"" << fileName << "\"!!\n";
       return false;
    }
    stringstream ssfile;
@@ -264,16 +364,67 @@ CirMgr::readCircuit(const string& fileName)
    file.close();
    try {
       string identifier;
+      try {
       strfile.parse(identifier);
+      } catch (CirErrCode e) {
+         if (e == MISSING_IDENTIFIER) {
+            strfile.errMsg = "aag";
+         }
+         throw e;
+      }
       if (identifier != "aag") { strfile.errMsg = identifier; throw ILLEGAL_IDENTIFIER; }
       size_t M, I, L, O, A;
       strfile.parse(' ');
-      strfile.parse(M); strfile.parse(' ');
-      strfile.parse(I); strfile.parse(' ');
-      strfile.parse(L); strfile.parse(' ');
-      if (L) { strfile.errMsg = "latches"; throw ILLEGAL_NUM; }
-      strfile.parse(O); strfile.parse(' ');
-      strfile.parse(A); strfile.parse('\n');
+      int flag = 0;
+      try {
+         strfile.parse(M);
+         ++flag;
+         strfile.parse(' ');
+         strfile.parse(I);
+         ++flag;
+         strfile.parse(' ');
+         strfile.parse(L);
+         ++flag;
+         strfile.parse(' ');
+         if (L) { strfile.errMsg = "latches"; throw ILLEGAL_NUM; }
+         strfile.parse(O); strfile.parse(' ');
+         ++flag;
+         strfile.parse(A);
+      } catch (CirErrCode e) {
+         if (e == MISSING_NUM) {
+            if (flag == 0) {
+               strfile.errMsg = "number of variables";
+            } else if (flag == 1) {
+               strfile.errMsg = "number of PIs";
+//            } else if (flag == 2) {
+//               strfile.errMsg = "number of L";
+            } else if (flag == 3) {
+               strfile.errMsg = "number of POs";
+            } else if (flag == 4) {
+               strfile.errMsg = "number of AIGs";
+            } else {}
+         }
+         else if (e == ILLEGAL_NUM) {
+            if (flag == 0) {
+               strfile.errMsg = "number of variables(" + strfile.errMsg + ")";
+            } else if (flag == 1) {
+               strfile.errMsg = "number of PIs(" + strfile.errMsg + ")";
+            } else if (flag == 2) {
+//               strfile.errMsg = "number of L(" + strfile.errMsg + ")";
+//            } else if (flag == 3) {
+               strfile.errMsg = "number of POs(" + strfile.errMsg + ")";
+            } else if (flag == 4) {
+               strfile.errMsg = "number of AIGs(" + strfile.errMsg + ")";
+            } else {}
+         }
+         throw e;
+      }
+      if(M < I + A) {
+         strfile.errMsg = "Number of variables";
+         strfile.errInt = M;
+         throw NUM_TOO_SMALL;
+      }
+      strfile.parse('\n');
       _header.M = M; _header.I = I; _header.L = L; _header.O = O; _header.A = A;
       _gateList.reserve(M + O + 1);
       _PI.reserve(I); _POi.reserve(O);
@@ -285,7 +436,21 @@ CirMgr::readCircuit(const string& fileName)
       for (size_t  i = 0; i < I; ++i){
          size_t idx;
          strfile.parsePI(idx);
-         _gateList[idx]->set(PI_GATE, strfile.lineNo + 1);
+         checkRange(idx * 2, strfile);
+         try {
+            _gateList[idx]->set(PI_GATE, strfile.lineNo + 1);
+         } catch (CirErrCode e) {
+            if (e == REDEF_CONST) {
+               strfile.errGate = _gateList[idx];
+               strfile.colNo = 0;
+               strfile.errInt = 0;
+            } else if (e == REDEF_GATE) {
+               strfile.errGate = _gateList[idx];
+               strfile.colNo = 0;
+               strfile.errInt = idx * 2;
+            }
+            throw e;
+         }
          _PI.push_back(idx);
          strfile.parse('\n');
       }
@@ -294,17 +459,50 @@ CirMgr::readCircuit(const string& fileName)
       }*/
       for ( size_t i = 0; i < O; ++i) {
          size_t po_fanin; // TODO need complete parse for PO, AIG
-         strfile.parse(po_fanin);
-         _gateList[M + 1 + i]->set(PO_GATE, strfile.lineNo + 1, po_fanin);
+         strfile.parsePO(po_fanin);
+         checkRange(po_fanin, strfile);
+         // set PO should never err
+         try {
+            _gateList[M + 1 + i]->set(PO_GATE, strfile.lineNo + 1, po_fanin);
+         } catch (CirErrCode e) {
+            if (e == REDEF_CONST) {
+               strfile.errGate = _gateList[M + 1 + i];
+               strfile.colNo = 0;
+               strfile.errInt = 0;
+            } else if (e == REDEF_GATE) {
+               strfile.errGate = _gateList[M + 1 + i];
+               strfile.colNo = 0;
+               strfile.errInt = (M + 1 + i) * 2;
+            }
+            throw e;
+         }
          _POi.push_back(po_fanin);
          strfile.parse('\n');
       }
       for ( size_t i = 0; i < A; ++i) {
          size_t idx, in1, in2;
-         strfile.parseAIG(idx); strfile.parse(' ');
-         strfile.parse(in1); strfile.parse(' ');
-         strfile.parse(in2);
-         _gateList[idx]->set(AIG_GATE, strfile.lineNo + 1, in1, in2);
+         strfile.parseAIG(idx);
+         checkRange(idx * 2, strfile);
+         strfile.parse(' ');
+         strfile.parseAIGin(in1);
+         checkRange(in1, strfile);
+         strfile.parse(' ');
+         strfile.parseAIGin(in2);
+         checkRange(in2, strfile);
+         try {
+            _gateList[idx]->set(AIG_GATE, strfile.lineNo + 1, in1, in2);
+         } catch (CirErrCode e) {
+            if (e == REDEF_CONST) {
+               strfile.errGate = _gateList[idx];
+               strfile.colNo = 0;
+               strfile.errInt = 0;
+            } else if (e == REDEF_GATE) {
+               strfile.errGate = _gateList[idx];
+               strfile.colNo = 0;
+               strfile.errInt = idx * 2;
+            }
+            throw e;
+         }
          strfile.parse('\n');
       }
       GateType gt;
@@ -369,6 +567,13 @@ CirMgr::readCircuit(const string& fileName)
       cout << "\033[0m";
 #endif
       strfile.parseError(e);
+      // destruct
+      size_t sz = _gateList.size();
+      for (size_t i = 0; i < sz; ++i){
+         int idx = sz - i - 1;
+         delete _gateList[idx];
+         _gateList.pop_back();
+      }
       return false;
    }
    return true;
@@ -394,13 +599,14 @@ CirMgr::printSummary() const
    cout << __FILE__ << ": " << __func__ << " line:" << __LINE__ << endl;
    cout << "\033[0m";
 #endif // DEBUG_INFO
+   cout << endl;
    cout << "Circuit Statistics\n"
       << "==================\n"
-      << "PI    " << setw(8) << _header.I << endl
-      << "PO    " << setw(8) << _header.O << endl
-      << "AIG   " << setw(8) << _header.A << endl
+      << "  PI    " << setw(8) << _header.I << endl
+      << "  PO    " << setw(8) << _header.O << endl
+      << "  AIG   " << setw(8) << _header.A << endl
       << "------------------\n"
-      << "Total " << setw(8) << _header.I + _header.O + _header.A << endl
+      << "  Total " << setw(8) << _header.I + _header.O + _header.A << endl
       ;
 }
 
@@ -498,6 +704,7 @@ void CirMgr::writeAIGs(string & str, size_t vid) const {
 void CirMgr::printNetlist() const {
    unwalked();
    size_t i = 0;
+   cout << endl;
    for (size_t oi = _header.M + 1; oi < _gateList.size(); ++oi){
       printSubNL(i, oi);
    }
@@ -527,12 +734,19 @@ void
 CirMgr::printFloatGates() const
 {
    vector<int> fl;
-   for (size_t i = 1; i <= _header.M; ++i) {
+   for (size_t i = 1; i < _gateList.size(); ++i) {
       if (_gateList[i]->_gtype == AIG_GATE) {
          size_t vid1, vid2;
          vid1 = _gateList[i]->_fanin1 / 2;
          vid2 = _gateList[i]->_fanin2 / 2;
          if(_gateList[vid1]->_gtype == UNDEF_GATE || _gateList[vid2]->_gtype == UNDEF_GATE) {
+            fl.push_back(i);
+         }
+      }
+      else if (_gateList[i]->_gtype == PO_GATE) {
+         size_t vid1;
+         vid1 = _gateList[i]->_fanin1 / 2;
+         if(_gateList[vid1]->_gtype == UNDEF_GATE) {
             fl.push_back(i);
          }
       }
@@ -559,7 +773,7 @@ CirMgr::printFloatGates() const
       }
    }
    if(!unused.empty()) {
-      cout << "Gates defined but not used :";
+      cout << "Gates defined but not used  :";
       for(size_t i = 0, sz = unused.size(); i < sz; ++i) {
          cout << " " << unused[i];
       }

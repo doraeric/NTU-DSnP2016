@@ -1,0 +1,16 @@
+#!/bin/bash
+cd tests.err
+../ref/cirTest -f do.err <<< "q -f" 2>&1 | cat -v > ../out/doerr-ref.log
+../ref/cirTest -f do.flt > ../out/doflt-ref.log <<< "q -f" 2>&1
+../ref/cirTest -f do.ok > ../out/dook-ref.log <<< "q -f" 2>&1
+../cirTest -f do.err > ../out/doerr-my.log <<< "q -f" 2>&1
+../cirTest -f do.flt > ../out/doflt-my.log <<< "q -f" 2>&1
+../cirTest -f do.ok > ../out/dook-my.log <<< "q -f" 2>&1
+cd ../out
+echo -e '\033[0;33m'comparing err...'\033[0m'
+diff -u doerr-ref.log doerr-my.log
+echo -e '\033[0;33m'comparing flt...'\033[0m'
+diff -u doflt-ref.log doflt-my.log
+echo -e '\033[0;33m'comparing ok...'\033[0m'
+diff -u dook-ref.log dook-my.log
+cd ..

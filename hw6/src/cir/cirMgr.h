@@ -52,6 +52,7 @@ public:
    void parsePI(size_t &);
    void parsePO(size_t &);
    void parseAIG(size_t &);
+   void parseAIGin(size_t &);
    bool parseSymbol(GateType &, size_t & idx, string & symbol);
    bool parseline();
    size_t lineNo;
@@ -59,6 +60,7 @@ public:
    bool parseError(CirErrCode);
    string errMsg;
    int errInt;
+   CirGate *errGate;
 };
 
 // TODO: Define your own data members and member functions
@@ -77,6 +79,8 @@ public:
 
    // Member functions about circuit construction
    bool readCircuit(const string&);
+   // varid => 2:1 3:!1 4:2 ...
+   void checkRange(size_t varid, ParserString &);
 
    // Member functions about circuit reporting
    void unwalked() const;
@@ -96,7 +100,6 @@ private:
    vector<size_t> _PI;
    vector<size_t> _POi;
    string _comments;
-//   string _output;
 };
 
 #endif // CIR_MGR_H
