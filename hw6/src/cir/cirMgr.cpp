@@ -428,7 +428,6 @@ CirMgr::readCircuit(const string& fileName)
       _header.M = M; _header.I = I; _header.L = L; _header.O = O; _header.A = A;
       _gateList.reserve(M + O + 1);
       _PI.reserve(I); _POi.reserve(O);
-      // TODO need delete if fail
       _gateList.push_back(new CirGate(this, 0, CONST_GATE));
       for (size_t i = 0; i < M + O; ++i){
          _gateList.push_back(new CirGate(this, i+1));
@@ -458,7 +457,7 @@ CirMgr::readCircuit(const string& fileName)
          strfile.parseline();
       }*/
       for ( size_t i = 0; i < O; ++i) {
-         size_t po_fanin; // TODO need complete parse for PO, AIG
+         size_t po_fanin;
          strfile.parsePO(po_fanin);
          checkRange(po_fanin, strfile);
          // set PO should never err
