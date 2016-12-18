@@ -5,6 +5,7 @@
   Author       [ Chung-Yang (Ric) Huang ]
   Copyright    [ Copyleft(c) 2014-present LaDs(III), GIEE, NTU, Taiwan ]
 ****************************************************************************/
+//#define _DEBUG_INFO
 
 #include <iostream>
 #include <string>
@@ -86,6 +87,17 @@ void
 TaskMgr::add(size_t nMachines)
 {
    // TODO...
+   while (nMachines) {
+      TaskNode toAdd;
+      if (_taskHash.insert(toAdd)) {
+         _taskHeap.insert(toAdd);
+         --nMachines;
+         cout << "Task node inserted: " << toAdd << '\n';
+      }
+   }
+#ifdef _DEBUG_INFO
+cout << "_taskHash.size(): " << _taskHash.size() << endl;
+#endif // _DEBUG_INFO
 }
 
 // return true if TaskNode is successfully inserted
@@ -94,6 +106,13 @@ bool
 TaskMgr::add(const string& s, size_t l)
 {
    // TODO...
+   TaskNode toAdd(s, l);
+   if (_taskHash.insert(toAdd)) {
+      _taskHeap.insert(toAdd);
+      cout << "Task node inserted: " << toAdd << '\n';
+      return true;
+   }
+   cerr << "Error: Task node (" << s << ") already exists.\n";
    return false;
 }
 
@@ -107,6 +126,12 @@ bool
 TaskMgr::assign(size_t l)
 {
    // TODO...
+   if (taskMgr == NULL || taskMgr->empty()) return false;
+   TaskNode min = _taskHeap.min();
+   min+=l;
+   _taskHeap.delMin();
+   _taskHeap.insert(min);
+   _taskHash.query(min);
    return true;
 }
 

@@ -29,10 +29,38 @@ public:
    size_t size() const { return _data.size(); }
 
    // TODO
-   const Data& min() const { return Data(); }
-   void insert(const Data& d) { }
-   void delMin() { }
-   void delData(size_t i) { }
+   const Data& min() const { return _data[0]; }
+   void insert(const Data& d) {
+      _data.push_back(d);
+      if (_data.size() == 1) return;
+      size_t i = size() - 1;
+      while(i && d < _data[(i + 1)/2 - 1]) {
+         _data[i] = _data[(i+1)/2 - 1];
+         i = (i + 1) / 2 -1;
+      }
+      _data[i] = d;
+   }
+   void swap(size_t a, size_t b) {
+      Data tmp = _data[a];
+      _data[a] = _data[b];
+      _data[b] = tmp;
+   }
+   void delMin() { delData(0); }
+   void delData(size_t i) {
+      size_t p = i, t = (p+1)*2-1, sz = size();
+      while (t < sz) {
+         if (t < sz-1) // t has right fellow
+            if (!(_data[t] < _data[t+1]))
+               ++t;
+         if (_data[sz-1] < _data[t])
+            break;
+         _data[p] = _data[t];
+         p = t;
+         t = (t+1)*2 - 1;
+      }
+      _data[p] = _data[sz-1];
+      _data.pop_back();
+   }
 
 private:
    // DO NOT add or change data members
