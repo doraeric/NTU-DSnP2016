@@ -136,7 +136,7 @@ public:
    // else return false;
    bool check(const Data& d) const {
       size_t idx = d() % _numBuckets;
-      for (size_t i = 0; i < _buckets[idx]; ++i) {
+      for (size_t i = 0; i < _buckets[idx].size(); ++i) {
          if (_buckets[idx][i] == d)
             return true;
       }
