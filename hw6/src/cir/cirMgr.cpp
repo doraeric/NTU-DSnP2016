@@ -723,8 +723,8 @@ void
 CirMgr::printPOs() const
 {
    cout << "POs of the circuit:";
-   for (size_t i = 0, sz = _POi.size(); i < sz; ++i) {
-      cout << " " << _POi[i];
+   for (size_t i = 0; i < _header.O; ++i) {
+      cout << " " << _header.M + i + 1;
    }
    cout << endl;
 }
