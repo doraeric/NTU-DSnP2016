@@ -1,0 +1,11 @@
+cirr -r ISCAS85/C7552.aag
+cirg 4784 -fanin 10000
+cirg 4785 -fanin 10000
+cirg 4786 -fanin 10000
+cirg 4787 -fanin 10000
+cirg 4788 -fanin 10000
+cirg 4789 -fanin 10000
+cirg 4790 -fanin 10000
+cirg 4791 -fanin 10000
+cirg 2 -fanout 1000
+cirg 725 -fanout 1000

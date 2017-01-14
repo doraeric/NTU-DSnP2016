@@ -27,27 +27,15 @@ public:
 //   CirGate(GateType gt = UNDEF_GATE, size_t f1 = -1, size_t f2 = -1, size_t l = 0):
 //      _type(gt), _fanin1(f1), _fanin2(f2), _lineNum(l) {}
    CirGate(CirMgr* mgr, size_t id, GateType t = UNDEF_GATE) :
-      _mgr(mgr), _id(id), _gtype(t), _lineNum(0), _fanin1(0), _fanin2(0) {};
+      _mgr(mgr), _id(id), _gtype(t), _lineNum(0), _fanin1(0), _fanin2(0),
+      _fin_lists_done(false), _fout_lists_done(false) {};
    ~CirGate() {}
 
    // Basic access methods
    GateType getType() const { return _gtype; }
    string getSymbol() const { return _symbol; }
 // not sure what string should this return for gate CONST, UNDEF, PO
-   string getTypeStr() const {
-      if (_gtype == CONST_GATE) {
-         return "CONST";
-      } else if (_gtype == UNDEF_GATE) {
-         return "UNDEF";
-      } else if (_gtype == PI_GATE) {
-         return "PI";
-      } else if (_gtype == PO_GATE) {
-         return "PO";
-      } else if (_gtype == AIG_GATE) {
-         return "AIG";
-      }
-      return "";
-   }
+   string getTypeStr() const;
    unsigned getLineNo() const { return _lineNum; }
 
    // Printing functions
@@ -80,6 +68,8 @@ private:
    size_t _fanin2;
    mutable bool _walked;
    string _symbol;
+   mutable bool _fin_lists_done, _fout_lists_done;
+   mutable vector<vector<int> > _fin_lists, _fout_lists;
 
 protected:
 

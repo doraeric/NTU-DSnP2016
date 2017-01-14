@@ -14,3 +14,10 @@ diff -u doflt-ref.log doflt-my.log
 echo -e '\033[0;33m'comparing ok...'\033[0m'
 diff -u dook-ref.log dook-my.log
 cd ..
+cd tests.fraig
+../ref/cirTest -f ../do.iscas > ../out/doiscas-ref.log <<< "q -f" 2>&1
+../cirTest -f ../do.iscas > ../out/doiscas-my.log <<< "q -f" 2>&1
+cd ../out
+echo -e '\033[0;33m'comparing iscas...'\033[0m'
+diff -u doiscas-ref.log doiscas-my.log
+cd ..

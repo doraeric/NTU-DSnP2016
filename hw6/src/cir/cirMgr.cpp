@@ -350,6 +350,15 @@ void CirMgr::checkRange(size_t varid, ParserString& strfile) {
    }
 }
 
+void CirMgr::reset() {
+   size_t sz = _gateList.size();
+   for (size_t i = 0; i < sz; ++i){
+      int idx = sz - i - 1;
+      delete _gateList[idx];
+      _gateList.pop_back();
+   }
+}
+
 bool
 CirMgr::readCircuit(const string& fileName)
 {
@@ -566,13 +575,7 @@ CirMgr::readCircuit(const string& fileName)
       cout << "\033[0m";
 #endif
       strfile.parseError(e);
-      // destruct
-      size_t sz = _gateList.size();
-      for (size_t i = 0; i < sz; ++i){
-         int idx = sz - i - 1;
-         delete _gateList[idx];
-         _gateList.pop_back();
-      }
+      // destruct when delete Mgr
       return false;
    }
    return true;
@@ -815,6 +818,7 @@ CirMgr::writeAag(ostream& outfile) const
    bool flag = (&cout == &outfile);
    outfile << "c\n" << _comments;
    if (flag) outfile << "\033[1;37;44m";
-   outfile << "output by doraeric.\n";
+   outfile << "output by doraeric.";
    if (flag) outfile << "\033[0m";
+   cout << endl;
 }

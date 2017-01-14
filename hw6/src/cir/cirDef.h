@@ -19,8 +19,7 @@ class CirMgr;
 typedef vector<CirGate*>           GateList;
 typedef vector<unsigned>           IdList;
 
-enum GateType
-{
+enum GateType {
    UNDEF_GATE = 0,
    PI_GATE    = 1,
    PO_GATE    = 2,

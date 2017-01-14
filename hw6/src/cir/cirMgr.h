@@ -68,7 +68,7 @@ class CirMgr
 {
 public:
    CirMgr(){}
-   ~CirMgr() {}
+   ~CirMgr() { reset(); }
 
    // Access functions
    // return '0' if "gid" corresponds to an undefined gate.
@@ -80,12 +80,13 @@ public:
    // Member functions about circuit construction
    bool readCircuit(const string&);
    // varid => 2:1 3:!1 4:2 ...
-   void checkRange(size_t varid, ParserString &);
+   /*add*/ void checkRange(size_t varid, ParserString &);
+   /*add*/ void reset();
 
    // Member functions about circuit reporting
-   void unwalked() const;
+   /*add*/ void unwalked() const;
+   /*add*/ void printSubNL(size_t & i, size_t vid) const;
    void printSummary() const;
-   void printSubNL(size_t & i, size_t vid) const;
    void printNetlist() const;
    void printPIs() const;
    void printPOs() const;
