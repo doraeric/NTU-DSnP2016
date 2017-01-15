@@ -74,7 +74,10 @@ public:
 
    // Access functions
    // return '0' if "gid" corresponds to an undefined gate.
-   CirGate* getGate(unsigned gid) const { return 0; }
+   CirGate* getGate(unsigned gid) const {
+      if (gid >= _gateList.size()) return 0;
+      return _gateList[gid];
+   }
 
    // Member functions about circuit construction
    bool readCircuit(const string&);
